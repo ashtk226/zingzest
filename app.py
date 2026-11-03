@@ -1,7 +1,7 @@
 
 import streamlit as st
 import numpy as np
-import tf_keras
+import tf-keras
 from PIL import Image
 
 st.set_page_config(
@@ -12,7 +12,7 @@ st.set_page_config(
 
 @st.cache_resource
 def load_model():
-    return tf_keras.models.load_model(
+    return tf-keras.models.load_model(
         "keras_model.h5",
         compile=False
     )
