@@ -1,11 +1,43 @@
 
 import streamlit as st
+import numpy as np
+import tf_keras
+from PIL import Image
 
 st.set_page_config(
     page_title="ZingZest",
     page_icon="🍋",
     layout="centered"
 )
+
+@st.cache_resource
+def load_model():
+    return tf_keras.models.load_model(
+        "keras_model.h5",
+        compile=False
+    )
+
+def load_labels():
+    with open("labels.txt", "r") as file:
+        return [
+            line.strip().split(" ", 1)[-1]
+            for line in file.readlines()
+        ]
+
+def predict_fruit(image):
+    model = load_model()
+    labels = load_labels()
+
+    image = image.resize((224, 224))
+    image_array = np.asarray(image).astype(np.float32)
+    image_array = (image_array / 127.5) - 1
+    image_array = np.expand_dims(image_array, axis=0)
+
+    prediction = model.predict(image_array, verbose=0)[0]
+    index = int(np.argmax(prediction))
+
+    return labels[index], float(prediction[index]) * 100
+
 
 st.markdown("""
 <style>
@@ -71,6 +103,16 @@ html, body, [data-testid="stAppViewContainer"] {
     margin: 12px 0;
 }
 
+.result-card {
+    background: linear-gradient(135deg, #FFE3EC, #FFF3C9);
+    border: 3px solid white;
+    border-radius: 25px;
+    padding: 25px;
+    text-align: center;
+    color: #806A7C;
+    margin-top: 20px;
+}
+
 div.stButton > button {
     background: #FF8FAB;
     color: white;
@@ -104,7 +146,10 @@ div.stButton > button:hover {
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="section-title">🌈 Ready to explore?</p>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="section-title">🌈 Ready to explore?</p>',
+    unsafe_allow_html=True
+)
 
 st.markdown("""
 <div class="info-card">
@@ -114,12 +159,32 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<p class="section-title">📸 Your fruit scanner</p>', unsafe_allow_html=True)
+st.markdown(
+    '<p class="section-title">📸 Your fruit scanner</p>',
+    unsafe_allow_html=True
+)
 
 photo = st.camera_input("Take a picture of a fruit")
 
 if photo is not None:
-    st.success("Lovely picture! Your fruit is ready for recognition.")
+    image = Image.open(photo).convert("RGB")
+    st.image(image, caption="Your fruity picture", use_container_width=True)
+
+    with st.spinner("🍓 ZingZest is identifying your fruit..."):
+        try:
+            fruit, confidence = predict_fruit(image)
+
+            st.markdown(f"""
+            <div class="result-card">
+                <h2>🎉 It's a {fruit.capitalize()}!</h2>
+                <p>Your fruit has been recognised!</p>
+                <h3>✨ Confidence: {confidence:.1f}%</h3>
+            </div>
+            """, unsafe_allow_html=True)
+
+        except Exception as error:
+            st.error("Oops! Something went wrong while recognising the fruit.")
+            st.exception(error)
 
 st.markdown("""
 <div class="footer">
